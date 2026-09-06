@@ -186,13 +186,20 @@ abstract class Routers {
       GoRoute(
         path: OTPPanel.routeName,
         name: OTPPanel.routeName,
-        builder: (context, state) => const OTPPanel(),
+        builder: (context, state) {
+          final data = state.extra as OTPPanelParam?;
+
+          return OTPPanel(data: data);
+        },
       ),
 
       GoRoute(
         path: SetPasswordPage.routeName,
         name: SetPasswordPage.routeName,
-        builder: (context, state) => const SetPasswordPage(),
+        builder: (context, state) {
+          final userKey = state.extra as String;
+          return SetPasswordPage(userKey: userKey);
+        },
       ),
 
       //! Contact Us 2 Route

@@ -1,12 +1,21 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:online_course/core/constants/app_colors.dart';
+import 'package:online_course/core/database/user_db.dart';
+import 'package:online_course/core/di/sl.dart';
 import 'package:online_course/core/service/connectivity/connectivity_checker.dart';
 import 'package:online_course/core/service/connectivity/no_internat_page.dart';
 import 'package:online_course/core/service/file/file_picker.dart';
 import 'package:online_course/core/utils/custom_appbar.dart';
 import 'package:online_course/core/utils/custom_toast.dart';
+import 'package:online_course/features/auth/domain/entities/account_setting_entitie.dart';
+import 'package:online_course/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:online_course/features/auth/presentation/pages/login/login_panel.dart';
+import 'package:online_course/features/auth/presentation/pages/otp/opt_panel.dart';
 
 class UpdateProfilePage extends StatefulWidget {
   const UpdateProfilePage({super.key});
@@ -17,7 +26,8 @@ class UpdateProfilePage extends StatefulWidget {
 }
 
 class _UpdateProfilePageState extends State<UpdateProfilePage> {
-  final _formKey = GlobalKey<FormState>();
+  late AuthBloc _authBloc;
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TextEditingController _lastNameController;
   late TextEditingController _emailController;
@@ -30,27 +40,28 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: 'Mahendra');
-    _lastNameController = TextEditingController(text: 'Kuldeep');
-    _emailController = TextEditingController(
-      text: 'mahendrakuldeep@example.com',
+    _authBloc = sl<AuthBloc>();
+    _nameController = TextEditingController(text: UserDB.firstName);
+    _lastNameController = TextEditingController(text: UserDB.lastName);
+    _emailController = TextEditingController(text: UserDB.email);
+    _phoneController = TextEditingController(text: UserDB.mobile);
+    _bioController = TextEditingController(text: UserDB.getBio);
+    _alternateMobileController = TextEditingController(
+      text: UserDB.alternateMobile,
     );
-    _phoneController = TextEditingController(text: '+91 98712 34567');
-    _bioController = TextEditingController(
-      text: 'Passionate learner and tech enthusiast',
-    );
-    _alternateMobileController = TextEditingController(text: '+91 86598 76543');
   }
 
   String getNameInitials() {
     String initials = '';
-    if (_nameController.text.isNotEmpty) {
-      initials += _nameController.text[0].toUpperCase();
+    final first = _nameController.text.trim();
+    final last = _lastNameController.text.trim();
+    if (first.isNotEmpty) {
+      initials += first[0].toUpperCase();
     }
-    if (_lastNameController.text.isNotEmpty) {
-      initials += _lastNameController.text[0].toUpperCase();
+    if (last.isNotEmpty) {
+      initials += last[0].toUpperCase();
     }
-    return initials;
+    return initials.isNotEmpty ? initials : 'MK';
   }
 
   @override
@@ -60,6 +71,30 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
     _phoneController.dispose();
     _bioController.dispose();
     super.dispose();
+  }
+
+  ImageProvider? _getProfileImageProvider() {
+    if (pickedImage != null) {
+      return FileImage(pickedImage!);
+    }
+
+    final storedImage = UserDB.profileImage.trim();
+    if (storedImage.isEmpty ||
+        storedImage.toLowerCase() == 'null' ||
+        storedImage.toLowerCase() == 'undefined') {
+      return null;
+    }
+
+    if (storedImage.startsWith('http://') ||
+        storedImage.startsWith('https://')) {
+      return NetworkImage(storedImage);
+    } else {
+      final file = File(storedImage);
+      if (file.existsSync()) {
+        return FileImage(file);
+      }
+      return null;
+    }
   }
 
   @override
@@ -95,28 +130,36 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
                   Center(
                     child: Column(
                       children: [
-                        CircleAvatar(
-                          radius: 60,
-                          backgroundColor: AppColors.primaryBlue,
-                          backgroundImage: pickedImage != null
-                              ? FileImage(pickedImage!)
-                              : null,
-                          child: pickedImage == null
-                              ? Text(
-                                  getNameInitials(),
-                                  style: const TextStyle(
-                                    fontSize: 32,
-                                    color: AppColors.white,
-                                  ),
-                                )
-                              : null,
+                        Builder(
+                          builder: (context) {
+                            final imageProvider = _getProfileImageProvider();
+                            return CircleAvatar(
+                              radius: 60,
+                              backgroundColor: AppColors.primaryBlue,
+                              backgroundImage: imageProvider,
+                              onBackgroundImageError: imageProvider != null
+                                  ? (_, __) {}
+                                  : null,
+                              child: imageProvider == null
+                                  ? Text(
+                                      getNameInitials(),
+                                      style: const TextStyle(
+                                        fontSize: 32,
+                                        color: AppColors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    )
+                                  : null,
+                            );
+                          },
                         ),
+
                         const SizedBox(height: 12),
                         ElevatedButton.icon(
                           onPressed: () async {
                             final File? pickedFile =
-                                await FilePickerService.uploadUserFile(
-                                  pickedImage,
+                                await FilePickerService.showImagePickerOptions(
+                                  context,
                                 );
 
                             if (pickedFile == null) return;
@@ -197,6 +240,18 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
                     hint: 'Enter your mobile number',
                     icon: Icons.phone,
                     keyboardType: TextInputType.phone,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(10),
+                    ],
+
+                    validator: (value) {
+                      if (value?.isEmpty ?? true) {
+                        return 'Please enter mobile number';
+                      }
+
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 16),
                   _buildTextField(
@@ -205,6 +260,10 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
                     hint: 'Enter your alternate Mobile number',
                     icon: Icons.phone,
                     keyboardType: TextInputType.phone,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(10),
+                    ],
                   ),
                   const SizedBox(height: 16),
 
@@ -219,38 +278,7 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
                   const SizedBox(height: 32),
 
                   // Save Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        if (_formKey.currentState?.validate() ?? false) {
-                          ToastUtils.showToast(
-                            context,
-                            ToastType.success,
-                            Colors.green,
-                            message: 'Profile updated successfully',
-                          );
-
-                          if (Navigator.canPop(context)) Navigator.pop(context);
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryBlue,
-                        foregroundColor: AppColors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: const Text(
-                        'Save Changes',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
+                  updateSettingsButton,
                   const SizedBox(height: 12),
 
                   // Cancel Button
@@ -286,6 +314,100 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
     );
   }
 
+  Widget get updateSettingsButton => BlocConsumer(
+    bloc: _authBloc,
+    listener: (context, state) {
+      if (state is AuthUpdateAccountSettingLoadedSuccessState) {
+        final getString = state.model.status == 2
+            ? 'and OTP: ${state.model.uOTP}'
+            : '';
+        if (state.model.status == 2) {
+          ToastUtils.showToast(
+            context,
+            ToastType.success,
+            Colors.white,
+            message: '${state.model.message} $getString',
+          );
+          context.pushNamed(
+            OTPPanel.routeName,
+            extra: OTPPanelParam(
+              mobileNumber: _phoneController.text,
+              panelID: 1,
+            ),
+          );
+        }
+
+        if (state.model.status == 1) {
+          ToastUtils.showToast(
+            context,
+            ToastType.success,
+            Colors.white,
+            message: '${state.model.message} $getString',
+          );
+          Future.delayed(Duration(seconds: 3), () {
+            context.pushNamed(LoginPanel.routeName);
+            UserDB.logout(context);
+          });
+        } else {
+          ToastUtils.showToast(
+            context,
+            ToastType.error,
+            Colors.white,
+            message: state.model.message.toString(),
+          );
+        }
+      } else if (state is AuthUpdateAccountSettingFailedState) {
+        ToastUtils.showToast(
+          context,
+          ToastType.error,
+          Colors.white,
+          message: state.message.toString(),
+        );
+      }
+    },
+    builder: (context, state) {
+      if (state is AuthLoadingState) {
+        return Center(child: CircularProgressIndicator());
+      }
+      return Center(
+        child: SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () {
+              if (_formKey.currentState!.validate()) {
+                _authBloc.add(
+                  AuthUpdateAccountSettingEvent(
+                    data: AccountEntity(
+                      uFirstName: _nameController.text,
+                      uLastName: _lastNameController.text,
+                      uEmail: _emailController.text,
+                      uMobile: _phoneController.text,
+                      uAlternateNumber: _alternateMobileController.text,
+                      uBio: _bioController.text,
+                      image: pickedImage ?? null,
+                    ),
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryBlue,
+              foregroundColor: AppColors.white,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text(
+              'Save Changes',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+      );
+    },
+  );
+
   Widget _buildSectionTitle(String title) {
     return Text(
       title,
@@ -306,6 +428,7 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
     int maxLines = 1,
     String? Function(String?)? validator,
     IconData? suffixIcon,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final fillColor = isDark ? AppColors.darkSurface : AppColors.white;
@@ -321,6 +444,7 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
       maxLines: maxLines,
       validator: validator,
       style: TextStyle(color: textColor),
+      inputFormatters: inputFormatters,
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(color: hintColor),

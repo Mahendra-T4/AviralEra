@@ -138,12 +138,13 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
           const SizedBox(height: 12),
-          Container(
-            decoration: BoxDecoration(
-              color: containerBgColor,
+          Material(
+            color: containerBgColor,
+            shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: borderColor),
+              side: BorderSide(color: borderColor),
             ),
+            clipBehavior: Clip.antiAlias,
             child: Column(
               children: [
                 for (int i = 0; i < children.length; i++) ...[

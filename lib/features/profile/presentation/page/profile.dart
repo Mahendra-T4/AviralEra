@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:in_app_review/in_app_review.dart';
+import 'package:online_course/core/database/user_db.dart';
 import 'package:online_course/core/service/connectivity/connectivity_checker.dart';
 import 'package:online_course/core/service/connectivity/no_internat_page.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -17,6 +20,42 @@ import 'package:online_course/features/profile/presentation/page/refund_policy_p
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
   static const String routeName = '/profile';
+
+  ImageProvider? _getProfileImageProvider() {
+    final storedImage = UserDB.profileImage.trim();
+    if (storedImage.isEmpty ||
+        storedImage.toLowerCase() == 'null' ||
+        storedImage.toLowerCase() == 'undefined') {
+      return null;
+    }
+
+    if (storedImage.startsWith('http://') ||
+        storedImage.startsWith('https://')) {
+      return NetworkImage(storedImage);
+    }
+
+    try {
+      final file = File(storedImage);
+      if (file.existsSync()) {
+        return FileImage(file);
+      }
+    } catch (_) {}
+
+    return null;
+  }
+
+  String getNameInitials() {
+    String initials = '';
+    final first = UserDB.firstName.trim();
+    final last = UserDB.lastName.trim();
+    if (first.isNotEmpty) {
+      initials += first[0].toUpperCase();
+    }
+    if (last.isNotEmpty) {
+      initials += last[0].toUpperCase();
+    }
+    return initials.isNotEmpty ? initials : '';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -169,6 +208,12 @@ class ProfilePage extends StatelessWidget {
         : AppColors.lightGray;
     final textColor = Theme.of(context).textTheme.bodyLarge!.color!;
     final subtextColor = Theme.of(context).textTheme.bodySmall!.color!;
+    final displayName = '${UserDB.firstName} ${UserDB.lastName}'.trim();
+    final userFullName = displayName.isNotEmpty ? displayName : '';
+    final userBioOrEmail = UserDB.getBio.isNotEmpty
+        ? UserDB.getBio
+        : (UserDB.email.isNotEmpty ? UserDB.email : 'flutter developer');
+    final imageProvider = _getProfileImageProvider();
 
     return Container(
       width: double.infinity,
@@ -181,20 +226,24 @@ class ProfilePage extends StatelessWidget {
       child: Column(
         children: [
           CircleAvatar(
-            radius: 50,
+            radius: 60,
             backgroundColor: AppColors.primaryBlue,
-            child: Text(
-              'MK',
-              style: TextStyle(
-                color: AppColors.white,
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            backgroundImage: imageProvider,
+            onBackgroundImageError: imageProvider != null ? (_, __) {} : null,
+            child: imageProvider == null
+                ? Text(
+                    getNameInitials(),
+                    style: const TextStyle(
+                      fontSize: 32,
+                      color: AppColors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  )
+                : null,
           ),
           const SizedBox(height: 12),
           Text(
-            'Mahendra Kuldeep',
+            userFullName,
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -203,7 +252,7 @@ class ProfilePage extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'flutter developer',
+            userBioOrEmail,
             style: TextStyle(fontSize: 14, color: subtextColor),
           ),
           // const SizedBox(height: 12),
@@ -246,12 +295,13 @@ class ProfilePage extends StatelessWidget {
     final titleColor = Theme.of(context).textTheme.titleMedium!.color!;
     final subtitleColor = Theme.of(context).textTheme.bodySmall!.color!;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: containerBgColor,
+    return Material(
+      color: containerBgColor,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: borderColor),
+        side: BorderSide(color: borderColor),
       ),
+      clipBehavior: Clip.antiAlias,
       child: ListTile(
         onTap: onTap,
         leading: Icon(icon, color: AppColors.primaryBlue, size: 24),
@@ -365,13 +415,7 @@ class ProfilePage extends StatelessWidget {
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () {
-                          if (Navigator.canPop(context)) Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Logged out successfully'),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
+                          UserDB.logout(context);
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.error,

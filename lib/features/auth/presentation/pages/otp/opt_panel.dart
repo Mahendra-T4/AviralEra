@@ -1,26 +1,39 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:async';
 import 'package:online_course/assets/assets.dart';
 import 'package:online_course/core/constants/app_colors.dart';
+import 'package:online_course/core/database/user_db.dart';
+import 'package:online_course/core/di/sl.dart';
 import 'package:online_course/core/service/connectivity/connectivity_checker.dart';
 import 'package:online_course/core/service/connectivity/no_internat_page.dart';
 import 'package:online_course/core/utils/custom_toast.dart';
+import 'package:online_course/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:online_course/features/auth/presentation/pages/login/login_panel.dart';
 import 'package:online_course/features/auth/presentation/pages/set-password/set_pass.dart';
-import 'package:online_course/features/profile/presentation/page/contact_us_page.dart';
 import 'package:online_course/features/profile/presentation/page/contact_us_page2.dart';
 
 class OTPPanel extends StatefulWidget {
-  const OTPPanel({super.key});
+  const OTPPanel({super.key, this.data});
+  final OTPPanelParam? data;
+
   static const String routeName = '/auth/otp';
 
   @override
   State<OTPPanel> createState() => _OTPPanelState();
 }
 
+class OTPPanelParam {
+  final int? panelID;
+  final String? mobileNumber;
+
+  OTPPanelParam({this.panelID, this.mobileNumber});
+}
+
 class _OTPPanelState extends State<OTPPanel> with TickerProviderStateMixin {
+  late AuthBloc _authBloc;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
@@ -40,6 +53,7 @@ class _OTPPanelState extends State<OTPPanel> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    _authBloc = sl<AuthBloc>();
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 2000),
       vsync: this,
@@ -107,6 +121,9 @@ class _OTPPanelState extends State<OTPPanel> with TickerProviderStateMixin {
 
   /// Get full OTP
   String getFullOTP() {
+    if (_otpControllers.any((controller) => controller.text.isEmpty)) {
+      return '';
+    }
     return _otpControllers.map((controller) => controller.text).join();
   }
 
@@ -138,20 +155,20 @@ class _OTPPanelState extends State<OTPPanel> with TickerProviderStateMixin {
 
   /// Verify OTP
   void _handleVerifyOTP() {
-    // if (_verificationTimer <= 0) {
-    //   ToastUtils.showToast(
-    //     context,
-    //     ToastType.error,
-    //     Colors.white,
-    //     message: 'OTP verification time expired',
-    //     icon: Icons.error,
-    //   );
-    //   return;
-    // }
+    if (_verificationTimer <= 0) {
+      ToastUtils.showToast(
+        context,
+        ToastType.error,
+        Colors.white,
+        message: 'OTP verification time expired',
+        icon: Icons.error,
+      );
+      return;
+    }
 
     String otp = getFullOTP();
 
-    if (otp.length != 6) {
+    if (otp.length != 6 || otp == "") {
       ToastUtils.showToast(
         context,
         ToastType.warning,
@@ -162,25 +179,13 @@ class _OTPPanelState extends State<OTPPanel> with TickerProviderStateMixin {
       return;
     }
 
-    setState(() => _isLoading = true);
-
-    // Simulate API call
-    Future.delayed(const Duration(seconds: 2), () {
-      setState(() => _isLoading = false);
-
-      if (mounted) {
-        ToastUtils.showToast(
-          context,
-          ToastType.success,
-          Colors.white,
-          message: 'OTP verified successfully!',
-          icon: Icons.check,
-        );
-        context.goNamed(SetPasswordPage.routeName);
-        // Navigate to next screen
-        // Navigator.pushNamed(context, '/home');
-      }
-    });
+    _authBloc.add(
+      OTPVerifyEvent(
+        uMobile: widget.data?.mobileNumber ?? '',
+        uOTP: getFullOTP(),
+        vType: widget.data?.panelID != 1 ? '' : '1',
+      ),
+    );
   }
 
   /// Resend OTP
@@ -209,7 +214,7 @@ class _OTPPanelState extends State<OTPPanel> with TickerProviderStateMixin {
   }
 
   /// Build OTP input field
-  Widget _buildOTPInput(int index) {
+  Widget _buildOTPInput(int index, bool isDark) {
     return SizedBox(
       width: 50,
       height: 60,
@@ -225,19 +230,26 @@ class _OTPPanelState extends State<OTPPanel> with TickerProviderStateMixin {
         onChanged: (value) => _handleOTPInput(value, index),
         decoration: InputDecoration(
           filled: true,
-          fillColor: AppColors.primaryBlueLighter,
+          fillColor: isDark
+              ? const Color(0xFF111827)
+              : AppColors.primaryBlueLighter,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.lightGray),
+            borderSide: BorderSide(
+              color: isDark ? Colors.grey[700]! : AppColors.lightGray,
+            ),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.lightGray, width: 2),
+            borderSide: BorderSide(
+              color: isDark ? Colors.grey[600]! : AppColors.lightGray,
+              width: 2,
+            ),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(
-              color: AppColors.primaryBlue,
+            borderSide: BorderSide(
+              color: isDark ? Colors.blue[300]! : AppColors.primaryBlue,
               width: 2,
             ),
           ),
@@ -247,8 +259,8 @@ class _OTPPanelState extends State<OTPPanel> with TickerProviderStateMixin {
           ),
           contentPadding: EdgeInsets.zero,
         ),
-        style: const TextStyle(
-          color: AppColors.darkGray,
+        style: TextStyle(
+          color: isDark ? Colors.white : AppColors.darkGray,
           fontWeight: FontWeight.bold,
           fontSize: 24,
         ),
@@ -306,7 +318,9 @@ class _OTPPanelState extends State<OTPPanel> with TickerProviderStateMixin {
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
+        final isDark = Theme.of(context).brightness == Brightness.dark;
         return Scaffold(
+          backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
           body: SafeArea(
             child: SingleChildScrollView(
               child: Column(
@@ -366,17 +380,23 @@ class _OTPPanelState extends State<OTPPanel> with TickerProviderStateMixin {
                         Container(
                           width: double.infinity,
                           decoration: BoxDecoration(
-                            color: AppColors.white,
+                            color: isDark
+                                ? const Color(0xFF1F2937)
+                                : AppColors.white,
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: AppColors.lightGray,
+                              color: isDark
+                                  ? Colors.grey[700]!
+                                  : AppColors.lightGray,
                               width: 1,
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.primaryBlue.withValues(
-                                  alpha: 0.06,
-                                ),
+                                color: isDark
+                                    ? Colors.black.withOpacity(0.3)
+                                    : AppColors.primaryBlue.withValues(
+                                        alpha: 0.06,
+                                      ),
                                 blurRadius: 12,
                                 offset: const Offset(0, 4),
                               ),
@@ -390,16 +410,12 @@ class _OTPPanelState extends State<OTPPanel> with TickerProviderStateMixin {
                                 'Enter OTP Code',
                                 style: Theme.of(context).textTheme.titleLarge
                                     ?.copyWith(
-                                      color: AppColors.primaryBlue,
+                                      color: isDark
+                                          ? Colors.white
+                                          : AppColors.primaryBlue,
                                       fontWeight: FontWeight.w600,
                                     ),
                               ),
-                              // const SizedBox(height: 8),
-                              // Text(
-                              //   'We\'ve sent a 6-digit verification code to your registered email address',
-                              //   style: Theme.of(context).textTheme.bodyMedium
-                              //       ?.copyWith(color: AppColors.mediumGray),
-                              // ),
                               const SizedBox(height: 24),
 
                               // Timer Display
@@ -500,41 +516,15 @@ class _OTPPanelState extends State<OTPPanel> with TickerProviderStateMixin {
                                       MainAxisAlignment.spaceEvenly,
                                   children: List.generate(
                                     6,
-                                    (index) => _buildOTPInput(index),
+                                    (index) => _buildOTPInput(index, isDark),
                                   ),
                                 ),
                               ),
                               const SizedBox(height: 32),
 
                               // Verify Button
-                              SizedBox(
-                                width: double.infinity,
-                                height: 56,
-                                child: ElevatedButton(
-                                  onPressed: _handleVerifyOTP,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.primaryBlue,
-                                    // disabledBackgroundColor: AppColors.primaryBlue
-                                    //     .withValues(alpha:0.6),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
-                                    elevation: 4,
-                                    shadowColor: AppColors.primaryBlue
-                                        .withValues(alpha: 0.3),
-                                  ),
-                                  child: Text(
-                                    'Verify OTP',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleMedium
-                                        ?.copyWith(
-                                          color: AppColors.white,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                  ),
-                                ),
-                              ),
+                              //!------------
+                              otpVerifyButtonWidget,
                             ],
                           ),
                         ),
@@ -629,4 +619,96 @@ class _OTPPanelState extends State<OTPPanel> with TickerProviderStateMixin {
       },
     );
   }
+
+  Widget get otpVerifyButtonWidget => BlocConsumer(
+    bloc: _authBloc,
+    listener: (context, state) {
+      if (state is AuthOTPVerificationLoadedSuccessState) {
+        if (state.otpVerifyModel.status == 1) {
+          final successMsg =
+              (state.otpVerifyModel.message != null &&
+                  state.otpVerifyModel.message.toString().isNotEmpty &&
+                  state.otpVerifyModel.message.toString() != 'null')
+              ? state.otpVerifyModel.message.toString()
+              : 'OTP verified successfully!';
+          ToastUtils.showToast(
+            context,
+            ToastType.success,
+            Colors.white,
+            message: successMsg,
+            icon: Icons.check,
+          );
+          Future.delayed(const Duration(milliseconds: 600), () {
+            if (!mounted) return;
+            if (widget.data?.panelID == 1 ) {
+              GoRouter.of(context).goNamed(LoginPanel.routeName);
+              if (UserDB.token) {
+                UserDB.logout(context);
+              }
+            } else {
+              GoRouter.of(context).goNamed(
+                SetPasswordPage.routeName,
+                extra: state.otpVerifyModel.userKey,
+              );
+            }
+          });
+        } else {
+          final errorMsg =
+              (state.otpVerifyModel.message != null &&
+                  state.otpVerifyModel.message.toString().isNotEmpty &&
+                  state.otpVerifyModel.message.toString() != 'null')
+              ? state.otpVerifyModel.message.toString()
+              : 'OTP verification failed. Please try again.';
+          ToastUtils.showToast(
+            context,
+            ToastType.error,
+            Colors.white,
+            message: errorMsg,
+            icon: Icons.error_outline,
+          );
+        }
+      }
+      if (state is AuthOTPVerificationLoadedFailedState) {
+        final errorMsg = state.message.isNotEmpty
+            ? state.message.toString()
+            : 'OTP verification failed. Please try again.';
+        ToastUtils.showToast(
+          context,
+          ToastType.error,
+          Colors.white,
+          message: errorMsg,
+          icon: Icons.error,
+        );
+      }
+    },
+    builder: (context, state) {
+      if (state is AuthLoadingState) {
+        return Center(child: CircularProgressIndicator());
+      }
+      return SizedBox(
+        width: double.infinity,
+        height: 56,
+        child: ElevatedButton(
+          onPressed: _handleVerifyOTP,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primaryBlue,
+            // disabledBackgroundColor: AppColors.primaryBlue
+            //     .withValues(alpha:0.6),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            elevation: 4,
+            shadowColor: AppColors.primaryBlue.withValues(alpha: 0.3),
+          ),
+          child: Text(
+            'Verify OTP',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: AppColors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      );
+    },
+  );
 }

@@ -128,7 +128,7 @@ class _PurchasedCoursesPageState extends State<PurchasedCoursesPage> {
                           //     ),
                           //   ),
                           // ),
-                          Text(
+                          const Text(
                             'My Courses',
                             style: TextStyle(
                               color: AppColors.accentOrangeLight,
@@ -354,7 +354,7 @@ class _PurchasedCoursesPageState extends State<PurchasedCoursesPage> {
               ),
             ),
             const SizedBox(height: 16),
-            CustomText(
+            const CustomText(
               text: 'No Courses Found',
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -362,7 +362,7 @@ class _PurchasedCoursesPageState extends State<PurchasedCoursesPage> {
               isSemibold: true,
             ),
             const SizedBox(height: 8),
-            CustomText(
+            const CustomText(
               text: 'Try adjusting your search or filters',
               fontSize: 14,
               fontWeight: FontWeight.w500,
@@ -387,7 +387,7 @@ class _PurchasedCoursesPageState extends State<PurchasedCoursesPage> {
                   color: AppColors.accentOrange,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: CustomText(
+                child: const CustomText(
                   text: 'Reset Filters',
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
@@ -512,7 +512,7 @@ class _PurchasedCoursesPageState extends State<PurchasedCoursesPage> {
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: CustomText(
+            child: const CustomText(
               text: 'Related Courses For You',
               fontSize: 18,
               fontWeight: FontWeight.bold,

@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:online_course/core/di/sl.dart';
 import 'package:online_course/core/theme/app_theme.dart';
 import 'package:online_course/core/bloc/theme_bloc.dart';
+
+import 'package:online_course/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:online_course/features/my_course/presentation/bloc/course_bloc.dart';
 import 'package:online_course/router.dart';
 
 class App extends StatelessWidget {
@@ -9,12 +13,18 @@ class App extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) {
-        final themeBloc = ThemeBloc();
-        themeBloc.add(LoadThemeEvent());
-        return themeBloc;
-      },
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (context) => sl<AuthBloc>()),
+        BlocProvider(create: (context) => sl<CourseBloc>()),
+        BlocProvider(
+          create: (context) {
+            final themeBloc = ThemeBloc();
+            themeBloc.add(LoadThemeEvent());
+            return themeBloc;
+          },
+        ),
+      ],
       child: BlocBuilder<ThemeBloc, ThemeState>(
         builder: (context, themeState) {
           return MaterialApp.router(

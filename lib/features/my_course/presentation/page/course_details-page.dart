@@ -121,7 +121,7 @@ class _CourseDetailsPageState extends State<CourseDetailsPage>
     final bg = isDark ? AppColors.darkBackground : const Color(0xFFF4F6FB);
 
     return StreamBuilder(
-     stream: InternetConnectivityChecker().connectionStream,
+      stream: InternetConnectivityChecker().connectionStream,
       initialData: true, // Assume connected initially
       builder: (context, snapshot) {
         // Handle error state
@@ -160,16 +160,16 @@ class _CourseDetailsPageState extends State<CourseDetailsPage>
                   ),
                 ],
               ),
-        
+
               // ── Floating back / actions ─────────────────────────────────────
               _buildFloatingBar(isDark),
             ],
           ),
-        
+
           // ── Sticky bottom CTA ───────────────────────────────────────────────
           // bottomNavigationBar: _buildBottomBar(isDark),
         );
-      }
+      },
     );
   }
 
@@ -179,7 +179,7 @@ class _CourseDetailsPageState extends State<CourseDetailsPage>
   Widget _buildHero(bool isDark) {
     return SliverAppBar(
       automaticallyImplyLeading: false,
-      expandedHeight: 260,
+      expandedHeight: 200,
       pinned: false,
       backgroundColor: Colors.transparent,
       flexibleSpace: FlexibleSpaceBar(
@@ -304,6 +304,7 @@ class _CourseDetailsPageState extends State<CourseDetailsPage>
         children: [
           // Price block
           Expanded(
+            // flex: 2,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -313,7 +314,7 @@ class _CourseDetailsPageState extends State<CourseDetailsPage>
                     Text(
                       _discountedFee,
                       style: TextStyle(
-                        fontSize: 26,
+                        fontSize: 20,
                         fontWeight: FontWeight.w900,
                         color: isDark
                             ? AppColors.darkTextPrimary
@@ -361,7 +362,8 @@ class _CourseDetailsPageState extends State<CourseDetailsPage>
             child: GestureDetector(
               onTap: () {},
               child: Container(
-                height: 52,
+                height: 45,
+                // width: MediaQuery.sizeOf(context).width * 0.40,
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [AppColors.accentOrange, AppColors.darkOrange],
@@ -1172,19 +1174,20 @@ class _CourseDetailsPageState extends State<CourseDetailsPage>
         child: ListView.builder(
           itemCount: 10,
           itemBuilder: (context, index) {
-            return Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Material(
                 color: AppColors.darkTextSecondary.withValues(alpha: 0.3),
-              ),
-              child: ListTile(
-                onTap: () {
-                  GoRouter.of(context).pushNamed(PDFPanel.routeName);
-                },
-                leading: Icon(Icons.picture_as_pdf),
-                title: Text('Lesson ${index + 1}'),
-                trailing: Icon(Icons.download),
+                borderRadius: BorderRadius.circular(8),
+                clipBehavior: Clip.antiAlias,
+                child: ListTile(
+                  onTap: () {
+                    GoRouter.of(context).pushNamed(PDFPanel.routeName);
+                  },
+                  leading: Icon(Icons.picture_as_pdf),
+                  title: Text('Lesson ${index + 1}'),
+                  trailing: Icon(Icons.download),
+                ),
               ),
             );
           },

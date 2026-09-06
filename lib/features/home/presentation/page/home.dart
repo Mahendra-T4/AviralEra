@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:online_course/core/constants/app_colors.dart';
+import 'package:online_course/core/database/user_db.dart';
 import 'package:online_course/core/service/connectivity/connectivity_checker.dart';
 import 'package:online_course/core/service/connectivity/no_internat_page.dart';
+import 'package:online_course/core/service/logger/logger.dart';
 import 'package:online_course/features/home/presentation/widgets/categorie.dart';
 import 'package:online_course/features/home/presentation/widgets/popular_card_widget.dart';
 import 'package:online_course/features/home/presentation/widgets/continue_learning_widget.dart';
@@ -24,10 +26,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   late AnimationController _headerController;
   late Animation<double> _bannerFade;
   late Animation<Offset> _headerSlide;
+  String? stdName;
 
   @override
   void initState() {
     super.initState();
+
+    logger.i("user token: ${UserDB.token}");
     _bannerController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 700),
@@ -53,6 +58,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     });
   }
 
+  String getStdName() {
+    String capitalize(String text) {
+      final trimmed = text.trim();
+      if (trimmed.isEmpty) return '';
+      return trimmed[0].toUpperCase() + trimmed.substring(1).toLowerCase();
+    }
+
+    final firstName = capitalize(UserDB.firstName);
+    final lastName = capitalize(UserDB.lastName);
+    return "$firstName $lastName".trim();
+  }
+
   @override
   void dispose() {
     _bannerController.dispose();
@@ -74,28 +91,30 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           );
         }
 
-        return Scaffold(
-          backgroundColor: AppColors.getBackgroundColor(context),
-          body: CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              _buildTopHeaderSection(context),
-              const SliverToBoxAdapter(child: SizedBox(height: 20)),
-              _buildBannerWidget(context),
-              const SliverToBoxAdapter(child: SizedBox(height: 20)),
-              const SliverToBoxAdapter(child: QuickStatsWidget()),
-              const SliverToBoxAdapter(child: SizedBox(height: 24)),
-              const SliverToBoxAdapter(child: ContinueLearningWidget()),
-              const SliverToBoxAdapter(child: SizedBox(height: 24)),
-              const SliverToBoxAdapter(child: RecentLaunchWidget()),
-              const SliverToBoxAdapter(child: SizedBox(height: 24)),
-              const SliverToBoxAdapter(child: RecentVideosWidget()),
-              const SliverToBoxAdapter(child: SizedBox(height: 24)),
-              const SliverToBoxAdapter(child: PopularCard()),
-              const SliverToBoxAdapter(child: SizedBox(height: 24)),
-              const SliverToBoxAdapter(child: CategorySection()),
-              const SliverToBoxAdapter(child: SizedBox(height: 110)),
-            ],
+        return SafeArea(
+          child: Scaffold(
+            backgroundColor: AppColors.getBackgroundColor(context),
+            body: CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                _buildTopHeaderSection(context),
+                const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                _buildBannerWidget(context),
+                const SliverToBoxAdapter(child: SizedBox(height: 40)),
+                const SliverToBoxAdapter(child: QuickStatsWidget()),
+                const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                const SliverToBoxAdapter(child: ContinueLearningWidget()),
+                const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                const SliverToBoxAdapter(child: RecentLaunchWidget()),
+                const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                const SliverToBoxAdapter(child: RecentVideosWidget()),
+                const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                const SliverToBoxAdapter(child: PopularCard()),
+                const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                const SliverToBoxAdapter(child: CategorySection()),
+                const SliverToBoxAdapter(child: SizedBox(height: 110)),
+              ],
+            ),
           ),
         );
       },
@@ -263,7 +282,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         child: FadeTransition(
           opacity: _headerController,
           child: Container(
-            margin: const EdgeInsets.only(top: 52),
+            margin: const EdgeInsets.only(top: 20),
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -291,10 +310,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           ),
                         ],
                       ),
-                      child: const Center(
+                      child: Center(
                         child: Text(
-                          'M',
-                          style: TextStyle(
+                          getStdName().isNotEmpty
+                              ? getStdName()[0].toUpperCase()
+                              : '',
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
@@ -316,7 +337,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Mahendra Kuldeep',
+                          getStdName(),
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w800,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:online_course/core/constants/app_colors.dart';
 import 'package:online_course/core/service/connectivity/connectivity_checker.dart';
 import 'package:online_course/core/service/connectivity/no_internat_page.dart';
 import 'package:online_course/features/test/presentation/page/quiz.dart';
@@ -47,6 +48,13 @@ class QuizIntroduction extends StatelessWidget {
           appBar: AppBar(
             elevation: 0,
             backgroundColor: Colors.transparent,
+            title: Text(
+              'Quiz Introduction',
+              style: TextStyle(
+                fontSize: 20,
+                color: theme.textTheme.bodyMedium?.color,
+              ),
+            ),
             leading: IconButton(
               icon: Icon(Icons.arrow_back_ios, color: theme.iconTheme.color),
               onPressed: () => Navigator.of(context).pop(),
@@ -84,7 +92,7 @@ class QuizIntroduction extends StatelessWidget {
                     title,
                     style: theme.textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.surface,
+                      // color: theme.colorScheme.surface,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -93,7 +101,7 @@ class QuizIntroduction extends StatelessWidget {
                   Text(
                     description,
                     style: theme.textTheme.bodyLarge?.copyWith(
-                      color: theme.colorScheme.surface.withValues(alpha: 0.7),
+                      // color: theme.colorScheme.surface.withValues(alpha: 0.7),
                       height: 1.5,
                     ),
                   ),
@@ -166,7 +174,7 @@ class QuizIntroduction extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: theme.cardColor,
+          color: theme.primaryColor,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -181,7 +189,7 @@ class QuizIntroduction extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: theme.primaryColor.withValues(alpha: 0.1),
+                color: AppColors.darkTextPrimary,
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, color: theme.primaryColor, size: 24),
@@ -193,7 +201,9 @@ class QuizIntroduction extends StatelessWidget {
                 Text(
                   title,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.surface.withValues(alpha: 0.6),
+                    color: AppColors.darkTextPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -201,6 +211,7 @@ class QuizIntroduction extends StatelessWidget {
                   value,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
+                    color: AppColors.accentOrangeLight,
                   ),
                 ),
               ],

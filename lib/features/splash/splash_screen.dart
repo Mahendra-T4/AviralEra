@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:online_course/assets/assets.dart';
 import 'package:online_course/core/constants/app_colors.dart';
+import 'package:online_course/core/database/user_db.dart';
 import 'package:online_course/features/auth/presentation/pages/login/login_panel.dart';
-
-
+import 'package:online_course/features/home/presentation/page/home.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -24,8 +24,18 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void initState() {
     super.initState();
+    userNavigationControl();
     _setupAnimations();
-    _navigateToHome();
+  }
+
+  void userNavigationControl() async {
+    if (UserDB.token) {
+      await Future.delayed(const Duration(seconds: 1));
+      context.goNamed(HomePage.routeName);
+    } else {
+      await Future.delayed(const Duration(seconds: 1));
+      context.goNamed(LoginPanel.routeName);
+    }
   }
 
   void _setupAnimations() {
@@ -125,7 +135,7 @@ class _SplashScreenState extends State<SplashScreen>
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primaryBlue.withValues(alpha:0.3),
+            color: AppColors.primaryBlue.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -157,7 +167,7 @@ class _SplashScreenState extends State<SplashScreen>
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
           decoration: BoxDecoration(
-            color: AppColors.primaryBlue.withValues(alpha:0.1),
+            color: AppColors.primaryBlue.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(20),
           ),
           child: const Text(

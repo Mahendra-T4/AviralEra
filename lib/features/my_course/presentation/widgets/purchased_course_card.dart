@@ -23,7 +23,7 @@ class PurchasedCourseCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha:0.08),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -148,7 +148,7 @@ class PurchasedCourseCard extends StatelessWidget {
                             value: course.progressPercentage / 100,
                             minHeight: 4,
                             backgroundColor: AppColors.darkTextSecondary
-                                .withValues(alpha:0.2),
+                                .withValues(alpha: 0.2),
                             valueColor: AlwaysStoppedAnimation<Color>(
                               AppColors.accentOrange,
                             ),

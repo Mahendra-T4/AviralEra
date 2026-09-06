@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:online_course/core/constants/app_colors.dart';
+import 'package:online_course/core/di/sl.dart';
 import 'package:online_course/core/service/connectivity/connectivity_checker.dart';
 import 'package:online_course/core/service/connectivity/no_internat_page.dart';
-
-import 'package:online_course/core/utils/custom_snackbar.dart';
 import 'package:online_course/core/utils/custom_toast.dart';
+import 'package:online_course/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:online_course/features/auth/presentation/pages/otp/opt_panel.dart';
 
 class ForgotPasswordPanel extends StatefulWidget {
@@ -18,11 +20,13 @@ class ForgotPasswordPanel extends StatefulWidget {
 
 class _ForgotPasswordPanelState extends State<ForgotPasswordPanel>
     with TickerProviderStateMixin {
+  late AuthBloc _authBloc;
   // late TextEditingController _emailController;
   late TextEditingController _mobileController;
   late TextEditingController _otpController;
   late AnimationController _fadeController;
   late AnimationController _slideController;
+  final _formKey = GlobalKey<FormState>();
 
   String _selectedMethod = 'email'; // 'email' or 'mobile'
   bool _isLoading = false;
@@ -31,6 +35,8 @@ class _ForgotPasswordPanelState extends State<ForgotPasswordPanel>
   @override
   void initState() {
     super.initState();
+    _authBloc = sl<AuthBloc>();
+
     // _emailController = TextEditingController();
     _mobileController = TextEditingController();
     _otpController = TextEditingController();
@@ -54,40 +60,6 @@ class _ForgotPasswordPanelState extends State<ForgotPasswordPanel>
     _fadeController.dispose();
     _slideController.dispose();
     super.dispose();
-  }
-
-  void _handleSendCode() {
-    String contactInfo = _mobileController.text;
-
-    if (contactInfo.isEmpty) {
-      ToastUtils.showToast(
-        context,
-        ToastType.warning,
-        Colors.white,
-        message: 'Please enter your mobile number',
-        icon: Icons.error,
-      );
-
-      return;
-    }
-
-    setState(() => _isLoading = true);
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _otpSent = true;
-        });
-        ToastUtils.showToast(
-          context,
-          ToastType.warning,
-          Colors.white,
-          message: 'OTP sent to your mobile number',
-          icon: Icons.error,
-        );
-        context.pushNamed(OTPPanel.routeName);
-      }
-    });
   }
 
   @override
@@ -116,7 +88,11 @@ class _ForgotPasswordPanelState extends State<ForgotPasswordPanel>
         return Scaffold(
           body: Container(
             height: size.height,
-            decoration: BoxDecoration(color: AppColors.primaryBlueDark),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? AppColors.darkBackground.withValues(alpha: 0.5)
+                  : AppColors.primaryBlueLight,
+            ),
             child: SafeArea(
               child: FadeTransition(
                 opacity: _fadeController,
@@ -147,7 +123,11 @@ class _ForgotPasswordPanelState extends State<ForgotPasswordPanel>
                                   shape: BoxShape.circle,
                                   color: Colors.white.withValues(alpha: 0.2),
                                   border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.3),
+                                    color: !isDark
+                                        ? AppColors.darkBackground.withValues(
+                                            alpha: 0.5,
+                                          )
+                                        : AppColors.primaryBlueLight,
                                     width: 2,
                                   ),
                                 ),
@@ -155,7 +135,11 @@ class _ForgotPasswordPanelState extends State<ForgotPasswordPanel>
                                   _otpSent
                                       ? Icons.verified_user_rounded
                                       : Icons.lock_reset_rounded,
-                                  color: Colors.white,
+                                  color: isDark
+                                      ? AppColors.primaryBlueLight
+                                      : AppColors.darkBackground.withValues(
+                                          alpha: 0.5,
+                                        ),
                                   size: 40,
                                 ),
                               ),
@@ -165,7 +149,11 @@ class _ForgotPasswordPanelState extends State<ForgotPasswordPanel>
                                     ? 'Verify Your Account'
                                     : 'Reset Password',
                                 style: TextStyle(
-                                  color: Colors.white,
+                                  color: !isDark
+                                      ? AppColors.darkBackground.withValues(
+                                          alpha: 0.5,
+                                        )
+                                      : AppColors.primaryBlueLight,
                                   fontSize: 24,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -178,7 +166,7 @@ class _ForgotPasswordPanelState extends State<ForgotPasswordPanel>
                                 textAlign: TextAlign.center,
                                 style: Theme.of(context).textTheme.bodyMedium
                                     ?.copyWith(
-                                      color: Colors.white.withValues(
+                                      color: Colors.black.withValues(
                                         alpha: 0.8,
                                       ),
                                     ),
@@ -212,71 +200,74 @@ class _ForgotPasswordPanelState extends State<ForgotPasswordPanel>
                               ],
                             ),
                             padding: const EdgeInsets.all(28),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                const SizedBox(height: 28),
-                                _buildTextField(
-                                  controller: _mobileController,
-                                  label: 'Mobile Number',
-                                  hint: 'Enter your mobile number',
-                                  icon: Icons.phone_outlined,
-                                  keyboardType: TextInputType.phone,
-                                  prefix: '+91 ',
-                                  maxLength: 10,
-                                ),
-                                const SizedBox(height: 24),
-                                // Send Code Button
-                                _buildSendButton(),
-                                const SizedBox(height: 16),
-                                // Back to Login Link
-                                Align(
-                                  alignment: Alignment.center,
-                                  child: GestureDetector(
-                                    onTap: () => context.pop(),
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.arrow_back_rounded,
-                                          color: AppColors.primaryBlueDark,
-                                          size: 16,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          'Back to Login',
-                                          style: TextStyle(
+                            child: Form(
+                              key: _formKey,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  const SizedBox(height: 28),
+                                  _buildTextField(
+                                    controller: _mobileController,
+                                    label: 'Mobile Number',
+                                    hint: 'Enter your mobile number',
+                                    icon: Icons.phone_outlined,
+                                    keyboardType: TextInputType.phone,
+                                    prefix: '+91 ',
+                                    maxLength: 10,
+                                  ),
+                                  const SizedBox(height: 24),
+                                  // Send Code Button
+                                  _buildSendButton(),
+                                  const SizedBox(height: 16),
+                                  // Back to Login Link
+                                  Align(
+                                    alignment: Alignment.center,
+                                    child: GestureDetector(
+                                      onTap: () => context.pop(),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.arrow_back_rounded,
                                             color: AppColors.primaryBlueDark,
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 14,
+                                            size: 16,
                                           ),
-                                        ),
-                                      ],
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            'Back to Login',
+                                            style: TextStyle(
+                                              color: AppColors.primaryBlueDark,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                ),
-                                // const SizedBox(height: 12),
-                                // Text(
-                                //   'Didn\'t receive the code?',
-                                //   style: TextStyle(
-                                //     fontSize: 12,
-                                //     color: Colors.grey[600],
-                                //   ),
-                                // ),
-                                // const SizedBox(height: 8),
-                                // GestureDetector(
-                                //   onTap: _isLoading ? null : _handleResendOTP,
-                                //   child: Text(
-                                //     'Resend OTP',
-                                //     style: TextStyle(
-                                //       color: AppColors.accentOrange,
-                                //       fontWeight: FontWeight.w600,
-                                //       fontSize: 14,
-                                //     ),
-                                //   ),
-                                // ),
-                              ],
+                                  // const SizedBox(height: 12),
+                                  // Text(
+                                  //   'Didn\'t receive the code?',
+                                  //   style: TextStyle(
+                                  //     fontSize: 12,
+                                  //     color: Colors.grey[600],
+                                  //   ),
+                                  // ),
+                                  // const SizedBox(height: 8),
+                                  // GestureDetector(
+                                  //   onTap: _isLoading ? null : _handleResendOTP,
+                                  //   child: Text(
+                                  //     'Resend OTP',
+                                  //     style: TextStyle(
+                                  //       color: AppColors.accentOrange,
+                                  //       fontWeight: FontWeight.w600,
+                                  //       fontSize: 14,
+                                  //     ),
+                                  //   ),
+                                  // ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -302,6 +293,13 @@ class _ForgotPasswordPanelState extends State<ForgotPasswordPanel>
     String? prefix,
     int? maxLength,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final fieldTextColor = isDark ? Colors.white : AppColors.primaryBlueDark;
+    final fieldHintColor = isDark ? Colors.grey[400] : Colors.grey[400];
+    final labelColor = isDark ? Colors.white70 : AppColors.primaryBlueDark;
+    final fillColor = isDark ? const Color(0xFF111827) : Colors.grey[50];
+    final borderColor = isDark ? Colors.grey[700]! : Colors.grey[200]!;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -310,7 +308,7 @@ class _ForgotPasswordPanelState extends State<ForgotPasswordPanel>
           style: TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 14,
-            color: AppColors.primaryBlueDark,
+            color: labelColor,
           ),
         ),
         const SizedBox(height: 8),
@@ -325,23 +323,41 @@ class _ForgotPasswordPanelState extends State<ForgotPasswordPanel>
               ),
             ],
           ),
-          child: TextField(
+          child: TextFormField(
             controller: controller,
             keyboardType: keyboardType,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(10),
+            ],
             maxLength: maxLength,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter mobile number';
+              }
 
+              if (keyboardType == TextInputType.phone &&
+                  !RegExp(r'^[0-9]{10}$').hasMatch(value)) {
+                return 'Please enter a valid 10-digit mobile number';
+              }
+              return null;
+            },
+            style: TextStyle(color: fieldTextColor),
             decoration: InputDecoration(
               hintText: hint,
-
-              hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-              prefixIcon: Icon(icon, color: Colors.indigoAccent, size: 20),
+              hintStyle: TextStyle(color: fieldHintColor, fontSize: 14),
+              prefixIcon: Icon(
+                icon,
+                color: isDark ? Colors.blue[200] : Colors.indigoAccent,
+                size: 20,
+              ),
               prefix: prefix != null
                   ? Padding(
                       padding: const EdgeInsets.only(left: 12),
                       child: Text(
                         prefix,
                         style: TextStyle(
-                          color: Colors.grey[600],
+                          color: isDark ? Colors.grey[300] : Colors.grey[600],
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                         ),
@@ -349,19 +365,19 @@ class _ForgotPasswordPanelState extends State<ForgotPasswordPanel>
                     )
                   : null,
               filled: true,
-              fillColor: Colors.grey[50],
+              fillColor: fillColor,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey[200]!, width: 1),
+                borderSide: BorderSide(color: borderColor, width: 1),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: Color(0xFF6366f1),
+                borderSide: BorderSide(
+                  color: isDark ? Colors.blue[300]! : const Color(0xFF6366f1),
                   width: 2,
                 ),
               ),
@@ -378,44 +394,81 @@ class _ForgotPasswordPanelState extends State<ForgotPasswordPanel>
   }
 
   Widget _buildSendButton() {
-    return GestureDetector(
-      onTap: _isLoading ? null : _handleSendCode,
-      child: Container(
-        height: 56,
-        decoration: BoxDecoration(
-          gradient: AppColors.accentGradient,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.accentOrange.withValues(alpha: 0.3),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Center(
-          child: _isLoading
-              ? SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      Colors.white.withValues(alpha: 0.9),
-                    ),
-                  ),
-                )
-              : Text(
-                  'Send Code',
-                  style: TextStyle(
-                    color: AppColors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5,
-                  ),
+    return BlocConsumer(
+      bloc: _authBloc,
+      listener: (context, state) {
+        if (state is AuthForgotPasswordLoadedSuccessState) {
+          if (state.forgotPasswordModel.status == 1) {
+            ToastUtils.showToast(
+              context,
+              ToastType.success,
+              Colors.white,
+              message:
+                  "${state.forgotPasswordModel.message} OTP: ${state.forgotPasswordModel.uOTP}",
+            );
+            context.pushNamed(
+              OTPPanel.routeName,
+              extra: OTPPanelParam(mobileNumber: _mobileController.text),
+            );
+          } else {
+            ToastUtils.showToast(
+              context,
+              ToastType.error,
+              Colors.white,
+              message: state.forgotPasswordModel.message.toString(),
+            );
+          }
+        } else if (state is AuthForgotPasswordLoadedFailedState) {
+          ToastUtils.showToast(
+            context,
+            ToastType.error,
+            Colors.white,
+            message: state.message.toString(),
+          );
+        }
+      },
+      builder: (context, state) {
+        if (state is AuthLoadingState) {
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [Center(child: CircularProgressIndicator())],
+          );
+        }
+        return GestureDetector(
+          onTap: () {
+            if (_formKey.currentState!.validate()) {
+              _authBloc.add(
+                ForgotPasswordEvent(uMobile: _mobileController.text ,),
+              );
+            }
+          },
+          child: Container(
+            height: 56,
+            decoration: BoxDecoration(
+              gradient: AppColors.accentGradient,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.accentOrange.withValues(alpha: 0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
                 ),
-        ),
-      ),
+              ],
+            ),
+            child: Center(
+              child: Text(
+                'Send Code',
+                style: TextStyle(
+                  color: AppColors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

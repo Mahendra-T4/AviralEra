@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:online_course/core/constants/app_colors.dart';
+import 'package:online_course/core/di/sl.dart';
 import 'package:online_course/core/service/connectivity/connectivity_checker.dart';
 import 'package:online_course/core/service/connectivity/no_internat_page.dart';
 import 'package:online_course/core/utils/custom_toast.dart';
+import 'package:online_course/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:online_course/features/auth/presentation/pages/login/login_panel.dart';
 
 enum PasswordStrength { none, weak, medium, strong }
 
 class SetPasswordPage extends StatefulWidget {
-  const SetPasswordPage({super.key});
+  const SetPasswordPage({super.key, this.userKey});
+  final String? userKey;
   static const String routeName = '/set-password';
 
   @override
@@ -18,6 +22,8 @@ class SetPasswordPage extends StatefulWidget {
 
 class _SetPasswordPageState extends State<SetPasswordPage>
     with TickerProviderStateMixin {
+  late AuthBloc _authBloc;
+  final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   late TextEditingController _passwordController;
   late TextEditingController _confirmPasswordController;
 
@@ -47,6 +53,7 @@ class _SetPasswordPageState extends State<SetPasswordPage>
   @override
   void initState() {
     super.initState();
+    _authBloc = sl<AuthBloc>();
     _passwordController = TextEditingController();
     _confirmPasswordController = TextEditingController();
 
@@ -147,17 +154,6 @@ class _SetPasswordPageState extends State<SetPasswordPage>
     final password = _passwordController.text;
     final confirm = _confirmPasswordController.text;
 
-    if (password.isEmpty || confirm.isEmpty) {
-      ToastUtils.showToast(
-        context,
-        ToastType.warning,
-        Colors.white,
-        message: 'Please fill in all fields',
-        icon: Icons.warning_outlined,
-      );
-      return;
-    }
-
     if (password != confirm) {
       ToastUtils.showToast(
         context,
@@ -191,22 +187,15 @@ class _SetPasswordPageState extends State<SetPasswordPage>
       return;
     }
 
-    setState(() => _isLoading = true);
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        ToastUtils.showToast(
-          context,
-          ToastType.success,
-          Colors.white,
-          message: 'Password set successfully!',
-          icon: Icons.check_circle_outline,
-        );
-        Future.delayed(const Duration(seconds: 1), () {
-          if (mounted) GoRouter.of(context).goNamed(LoginPanel.routeName);
-        });
-      }
-    });
+    if (formKey.currentState!.validate()) {
+      _authBloc.add(
+        AuthResetPasswordEvent(
+          uPassword: password,
+          uConfirmPassword: confirm,
+          userKey: widget.userKey,
+        ),
+      );
+    }
   }
 
   @override
@@ -259,26 +248,29 @@ class _SetPasswordPageState extends State<SetPasswordPage>
                       physics: const BouncingScrollPhysics(),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                        child: Column(
-                          children: [
-                            SizedBox(height: size.height * 0.05),
+                        child: Form(
+                          key: formKey,
+                          child: Column(
+                            children: [
+                              SizedBox(height: size.height * 0.05),
 
-                            // Header section
-                            SlideTransition(
-                              position: _headerSlideAnimation,
-                              child: _buildHeaderSection(),
-                            ),
+                              // Header section
+                              SlideTransition(
+                                position: _headerSlideAnimation,
+                                child: _buildHeaderSection(),
+                              ),
 
-                            SizedBox(height: size.height * 0.04),
+                              SizedBox(height: size.height * 0.04),
 
-                            // Form card
-                            SlideTransition(
-                              position: _cardSlideAnimation,
-                              child: _buildFormCard(isDark),
-                            ),
+                              // Form card
+                              SlideTransition(
+                                position: _cardSlideAnimation,
+                                child: _buildFormCard(isDark),
+                              ),
 
-                            SizedBox(height: size.height * 0.04),
-                          ],
+                              SizedBox(height: size.height * 0.04),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -460,6 +452,13 @@ class _SetPasswordPageState extends State<SetPasswordPage>
             obscure: _obscurePassword,
             onToggle: () =>
                 setState(() => _obscurePassword = !_obscurePassword),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter your password';
+              }
+
+              return null;
+            },
           ),
 
           // Strength indicator
@@ -483,6 +482,16 @@ class _SetPasswordPageState extends State<SetPasswordPage>
                 _passwordController.text.isNotEmpty,
             isMatch:
                 _passwordController.text == _confirmPasswordController.text,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter your password';
+              }
+              if (_passwordController.text != _confirmPasswordController.text) {
+                return 'Passwords do not match';
+              }
+
+              return null;
+            },
           ),
 
           // Match indicator below confirm field
@@ -506,7 +515,7 @@ class _SetPasswordPageState extends State<SetPasswordPage>
 
           // Back link
           GestureDetector(
-            onTap: () => context.pop(),
+            onTap: () => GoRouter.of(context).pop(),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -552,11 +561,18 @@ class _SetPasswordPageState extends State<SetPasswordPage>
     required VoidCallback onToggle,
     bool showMatchIndicator = false,
     bool isMatch = false,
+    String? Function(String?)? validator,
   }) {
-    Color borderColor = Colors.grey.shade200;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    Color borderColor = isDark ? Colors.grey[700]! : Colors.grey.shade200;
     if (showMatchIndicator) {
       borderColor = isMatch ? AppColors.success : AppColors.error;
     }
+    final fillColor = isDark ? const Color(0xFF111827) : Colors.grey[50];
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final hintColor = isDark ? Colors.grey[400] : Colors.grey[400];
+    final iconColor = isDark ? Colors.blue[200] : AppColors.primaryBlue;
+    final suffixColor = isDark ? Colors.grey[300] : AppColors.mediumGray;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -570,16 +586,21 @@ class _SetPasswordPageState extends State<SetPasswordPage>
           ),
         ],
       ),
-      child: TextField(
+      child: TextFormField(
         controller: controller,
         obscureText: obscure,
-        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+        validator: validator,
+        style: TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w500,
+          color: textColor,
+        ),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+          hintStyle: TextStyle(color: hintColor, fontSize: 14),
           prefixIcon: Icon(
             Icons.lock_outline_rounded,
-            color: AppColors.primaryBlue,
+            color: iconColor,
             size: 20,
           ),
           suffixIcon: GestureDetector(
@@ -591,13 +612,13 @@ class _SetPasswordPageState extends State<SetPasswordPage>
                     ? Icons.visibility_off_outlined
                     : Icons.visibility_outlined,
                 key: ValueKey(obscure),
-                color: AppColors.mediumGray,
+                color: suffixColor,
                 size: 20,
               ),
             ),
           ),
           filled: true,
-          fillColor: Colors.grey[50],
+          fillColor: fillColor,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
             borderSide: BorderSide.none,
@@ -608,8 +629,8 @@ class _SetPasswordPageState extends State<SetPasswordPage>
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(
-              color: AppColors.primaryBlue,
+            borderSide: BorderSide(
+              color: isDark ? Colors.blue[300]! : AppColors.primaryBlue,
               width: 2,
             ),
           ),
@@ -735,13 +756,16 @@ class _SetPasswordPageState extends State<SetPasswordPage>
 
   // ── Requirements checklist ───────────────────────────────────────────────────
   Widget _buildRequirementsCard() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.primaryBlueLighter,
+        color: isDark ? const Color(0xFF111827) : AppColors.primaryBlueLighter,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: AppColors.primaryBlue.withValues(alpha: 0.12),
+          color: isDark
+              ? Colors.grey[700]!
+              : AppColors.primaryBlue.withValues(alpha: 0.12),
           width: 1,
         ),
       ),
@@ -761,7 +785,7 @@ class _SetPasswordPageState extends State<SetPasswordPage>
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.primaryBlue,
+                  color: isDark ? Colors.white : AppColors.primaryBlue,
                 ),
               ),
             ],
@@ -783,6 +807,7 @@ class _SetPasswordPageState extends State<SetPasswordPage>
   }
 
   Widget _buildRequirementRow(String text, bool met) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
       children: [
         AnimatedSwitcher(
@@ -801,7 +826,11 @@ class _SetPasswordPageState extends State<SetPasswordPage>
           text,
           style: TextStyle(
             fontSize: 12,
-            color: met ? AppColors.darkGray : Colors.grey[500],
+            color: met
+                ? Colors.grey[900]
+                : isDark
+                ? Colors.grey[400]
+                : Colors.grey[900],
             fontWeight: met ? FontWeight.w600 : FontWeight.w400,
           ),
         ),
@@ -811,60 +840,80 @@ class _SetPasswordPageState extends State<SetPasswordPage>
 
   // ── Submit button ─────────────────────────────────────────────────────────────
   Widget _buildSetPasswordButton() {
-    return GestureDetector(
-      onTap: _isLoading ? null : _handleSetPassword,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        height: 56,
-        decoration: BoxDecoration(
-          gradient: _isLoading
-              ? LinearGradient(
-                  colors: [
-                    AppColors.primaryBlue.withValues(alpha: 0.7),
-                    AppColors.primaryBlueDark.withValues(alpha: 0.7),
-                  ],
-                )
-              : AppColors.primaryGradient,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: _isLoading
-              ? []
-              : [
-                  BoxShadow(
-                    color: AppColors.primaryBlue.withValues(alpha: 0.35),
-                    blurRadius: 16,
-                    spreadRadius: 0,
-                    offset: const Offset(0, 6),
+    return BlocConsumer(
+      bloc: _authBloc,
+      listener: (context, state) {
+        if (state is AuthResetPasswordLoadedSuccessState) {
+          if (state.successModel.status == 1) {
+            ToastUtils.showToast(
+              context,
+              ToastType.success,
+              Colors.white,
+              message: state.successModel.message.toString(),
+              icon: Icons.check_circle_outline,
+            );
+            GoRouter.of(context).goNamed(LoginPanel.routeName);
+          } else {
+            ToastUtils.showToast(
+              context,
+              ToastType.error,
+              Colors.white,
+              message: state.successModel.message.toString(),
+              icon: Icons.check_circle_outline,
+            );
+          }
+        } else if (state is AuthResetPasswordLoadedFailedState) {
+          ToastUtils.showToast(
+            context,
+            ToastType.error,
+            Colors.white,
+            message: state.message.toString(),
+            icon: Icons.check_circle_outline,
+          );
+        }
+      },
+      builder: (context, state) {
+        if (state is AuthLoadingState)
+          return Center(child: CircularProgressIndicator());
+
+        return GestureDetector(
+          onTap: _handleSetPassword,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            height: 56,
+            decoration: BoxDecoration(
+              gradient: AppColors.primaryGradient,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primaryBlue.withValues(alpha: 0.35),
+                  blurRadius: 16,
+                  spreadRadius: 0,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Center(
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.lock_rounded, color: Colors.white, size: 18),
+                  SizedBox(width: 8),
+                  Text(
+                    'Set Password',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                 ],
-        ),
-        child: Center(
-          child: _isLoading
-              ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  ),
-                )
-              : const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.lock_rounded, color: Colors.white, size: 18),
-                    SizedBox(width: 8),
-                    Text(
-                      'Set Password',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
-                ),
-        ),
-      ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
