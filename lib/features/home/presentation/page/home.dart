@@ -111,7 +111,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 const SliverToBoxAdapter(child: SizedBox(height: 24)),
                 const SliverToBoxAdapter(child: PopularCard()),
                 const SliverToBoxAdapter(child: SizedBox(height: 24)),
-                const SliverToBoxAdapter(child: CategorySection()),
+                SliverToBoxAdapter(child: CategorySection()),
                 const SliverToBoxAdapter(child: SizedBox(height: 110)),
               ],
             ),

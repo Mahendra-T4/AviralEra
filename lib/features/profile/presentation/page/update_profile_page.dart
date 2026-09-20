@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -12,6 +13,7 @@ import 'package:online_course/core/service/connectivity/no_internat_page.dart';
 import 'package:online_course/core/service/file/file_picker.dart';
 import 'package:online_course/core/utils/custom_appbar.dart';
 import 'package:online_course/core/utils/custom_toast.dart';
+import 'package:online_course/core/utils/image_util.dart';
 import 'package:online_course/features/auth/domain/entities/account_setting_entitie.dart';
 import 'package:online_course/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:online_course/features/auth/presentation/pages/login/login_panel.dart';
@@ -73,30 +75,6 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
     super.dispose();
   }
 
-  ImageProvider? _getProfileImageProvider() {
-    if (pickedImage != null) {
-      return FileImage(pickedImage!);
-    }
-
-    final storedImage = UserDB.profileImage.trim();
-    if (storedImage.isEmpty ||
-        storedImage.toLowerCase() == 'null' ||
-        storedImage.toLowerCase() == 'undefined') {
-      return null;
-    }
-
-    if (storedImage.startsWith('http://') ||
-        storedImage.startsWith('https://')) {
-      return NetworkImage(storedImage);
-    } else {
-      final file = File(storedImage);
-      if (file.existsSync()) {
-        return FileImage(file);
-      }
-      return null;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return StreamBuilder(
@@ -132,7 +110,9 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
                       children: [
                         Builder(
                           builder: (context) {
-                            final imageProvider = _getProfileImageProvider();
+                            final ImageProvider? imageProvider = pickedImage != null
+                                ? FileImage(pickedImage!)
+                                : ImageUtil.getProfileImageProvider();
                             return CircleAvatar(
                               radius: 60,
                               backgroundColor: AppColors.primaryBlue,

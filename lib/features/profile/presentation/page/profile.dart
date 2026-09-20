@@ -1,4 +1,3 @@
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +5,7 @@ import 'package:in_app_review/in_app_review.dart';
 import 'package:online_course/core/database/user_db.dart';
 import 'package:online_course/core/service/connectivity/connectivity_checker.dart';
 import 'package:online_course/core/service/connectivity/no_internat_page.dart';
+import 'package:online_course/core/utils/image_util.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:online_course/core/constants/app_colors.dart';
 import 'package:online_course/core/utils/custom_appbar.dart';
@@ -20,29 +20,6 @@ import 'package:online_course/features/profile/presentation/page/refund_policy_p
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
   static const String routeName = '/profile';
-
-  ImageProvider? _getProfileImageProvider() {
-    final storedImage = UserDB.profileImage.trim();
-    if (storedImage.isEmpty ||
-        storedImage.toLowerCase() == 'null' ||
-        storedImage.toLowerCase() == 'undefined') {
-      return null;
-    }
-
-    if (storedImage.startsWith('http://') ||
-        storedImage.startsWith('https://')) {
-      return NetworkImage(storedImage);
-    }
-
-    try {
-      final file = File(storedImage);
-      if (file.existsSync()) {
-        return FileImage(file);
-      }
-    } catch (_) {}
-
-    return null;
-  }
 
   String getNameInitials() {
     String initials = '';
@@ -213,7 +190,7 @@ class ProfilePage extends StatelessWidget {
     final userBioOrEmail = UserDB.getBio.isNotEmpty
         ? UserDB.getBio
         : (UserDB.email.isNotEmpty ? UserDB.email : 'flutter developer');
-    final imageProvider = _getProfileImageProvider();
+    final imageProvider = ImageUtil.getProfileImageProvider();
 
     return Container(
       width: double.infinity,

@@ -3,14 +3,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:online_course/core/constants/app_colors.dart';
 import 'package:online_course/core/di/sl.dart';
 import 'package:online_course/core/utils/custom_toast.dart';
+import 'package:online_course/features/my_course/domain/entities/category_entitie.dart';
 import 'package:online_course/features/my_course/presentation/bloc/course_bloc.dart';
 
 class CourseListDropdownWidget extends StatefulWidget {
-  const CourseListDropdownWidget({
-    super.key,
-    this.onChanged,
-    this.courseName,
-  });
+  const CourseListDropdownWidget({super.key, this.onChanged, this.courseName});
   final void Function(String?)? onChanged;
   final String? courseName;
 
@@ -26,7 +23,7 @@ class _CourseListDropdownWidgetState extends State<CourseListDropdownWidget> {
   void initState() {
     super.initState();
     _courseBloc = sl<CourseBloc>();
-    _courseBloc.add(GetCourseListEvent());
+    _courseBloc.add(GetCourseListEvent(entity: CourseFilterEntity()));
   }
 
   @override
@@ -64,7 +61,8 @@ class _CourseListDropdownWidgetState extends State<CourseListDropdownWidget> {
                   ),
                 )
                 .toList();
-            final isValidValue = widget.courseName != null &&
+            final isValidValue =
+                widget.courseName != null &&
                 items.any((item) => item.value == widget.courseName);
 
             return courseTypeModel.status != 1

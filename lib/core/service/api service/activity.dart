@@ -8,4 +8,10 @@ class Activity {
   static final courseList = "course-list";
   static final accountSetting = "account-settings";
   static final changePassword = "change-password";
+  static final getPolicies = "cms-policies";
+  static final getAboutUs = "cms-about";
+  static final getContactUs = "cms-contact";
+  static final getLogo = "get-logo";
+  static final notification = "notification";
+  static final getCategory = "get-categories";
 }

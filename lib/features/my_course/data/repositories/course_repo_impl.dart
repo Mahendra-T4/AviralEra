@@ -1,18 +1,26 @@
 import 'package:dio/dio.dart';
+import 'package:online_course/core/database/user_db.dart';
 import 'package:online_course/core/service/api%20service/activity.dart';
 import 'package:online_course/core/service/api%20service/dio_service.dart';
 import 'package:online_course/core/service/logger/logger.dart';
+import 'package:online_course/features/my_course/data/model/category.dart';
 import 'package:online_course/features/my_course/data/model/course_list_modeld.dart';
 import 'package:online_course/features/my_course/data/model/course_type_model.dart';
+import 'package:online_course/features/my_course/domain/entities/category_entitie.dart';
 import 'package:online_course/features/my_course/domain/repositories/course_repo.dart';
 
 class CourseRepoImpl implements CourseRepository {
   @override
-  Future<CourseListModel> getCourseList() async {
+  Future<CourseListModel> getCourseList(CourseFilterEntity? entity) async {
     CourseListModel model = CourseListModel();
     try {
       final response = await DioService.dioPostApiCall(
-        data: FormData.fromMap({'activity': Activity.courseList}),
+        data: FormData.fromMap({
+          'activity': Activity.courseList,
+          'popularCategory': entity?.popularCategory ?? '',
+          'categoryKey': entity?.categoryKey,
+          'keyword': entity?.keyword,
+        }),
       );
       if (response.statusCode == 200) {
         model = CourseListModel.fromJson(response.data);
@@ -41,6 +49,29 @@ class CourseRepoImpl implements CourseRepository {
       }
     } catch (e) {
       logger.e('Course Type Error : $e');
+    }
+    return model;
+  }
+
+
+  @override
+  Future<CategoryModel> getCourseCategory() async {
+    CategoryModel model = CategoryModel();
+    try {
+      final response = await DioService.dioPostApiCall(
+        data: FormData.fromMap({
+          'activity': Activity.getCategory,
+          'userKey': UserDB.userKey,
+        }),
+      );
+      if (response.statusCode == 200) {
+        model = CategoryModel.fromJson(response.data);
+        logger.d('Course Category JsonData : ${response.data}');
+      } else {
+        logger.i('failed to get course category');
+      }
+    } catch (e) {
+      logger.e('Course Category Error : $e');
     }
     return model;
   }

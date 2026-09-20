@@ -44,3 +44,19 @@ final class CourseTypeFailedErrorState extends CourseState {
   @override
   List<Object> get props => [error];
 }
+
+//!---------------------Course Category-----------------------------------------
+
+final class CourseCategoryLoadedSuccessState extends CourseState {
+  final CategoryModel model;
+  CourseCategoryLoadedSuccessState({required this.model});
+  @override
+  List<Object> get props => [model];
+}
+
+final class CourseCategoryFailedErrorState extends CourseState {
+  final String error;
+  CourseCategoryFailedErrorState({required this.error});
+  @override
+  List<Object> get props => [error];
+}

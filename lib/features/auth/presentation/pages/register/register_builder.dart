@@ -40,38 +40,6 @@ abstract class RegisterBuilder extends State<StudentRegisterPanel> {
   String? selectedCourseName;
   String? selectedCourseType;
 
-  // State list (Indian states - expandable)
-  final List<String> states = [
-    'Andhra Pradesh',
-    'Arunachal Pradesh',
-    'Assam',
-    'Bihar',
-    'Chhattisgarh',
-    'Goa',
-    'Gujarat',
-    'Haryana',
-    'Himachal Pradesh',
-    'Jharkhand',
-    'Karnataka',
-    'Kerala',
-    'Madhya Pradesh',
-    'Maharashtra',
-    'Manipur',
-    'Meghalaya',
-    'Mizoram',
-    'Nagaland',
-    'Odisha',
-    'Punjab',
-    'Rajasthan',
-    'Sikkim',
-    'Tamil Nadu',
-    'Telangana',
-    'Tripura',
-    'Uttar Pradesh',
-    'Uttarakhand',
-    'West Bengal',
-  ];
-
   @override
   void dispose() {
     firstNameController.dispose();
@@ -354,14 +322,16 @@ abstract class RegisterBuilder extends State<StudentRegisterPanel> {
               context,
               ToastType.success,
               Colors.white,
-              message: state.registerUserModel.message.toString(),
+              message:
+                  '${state.registerUserModel.message} OTP: ${state.registerUserModel.uOTP}',
+              maxLines: 3,
             );
             clearControllers();
           } else {
             ToastUtils.showToast(
               context,
               ToastType.error,
-              Colors.red,
+              Colors.white,
               message: state.registerUserModel.message.toString(),
             );
           }
@@ -370,7 +340,7 @@ abstract class RegisterBuilder extends State<StudentRegisterPanel> {
           ToastUtils.showToast(
             context,
             ToastType.error,
-            Colors.red,
+            Colors.white,
             message: state.message,
           );
         }

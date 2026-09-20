@@ -5,6 +5,7 @@ import 'package:online_course/core/service/connectivity/connectivity_checker.dar
 import 'package:online_course/core/service/connectivity/no_internat_page.dart';
 import 'package:online_course/core/utils/custom_text.dart';
 import 'package:online_course/features/download/presentation/page/download.dart';
+import 'package:online_course/features/global/presentation/section_heading.dart';
 
 import 'package:online_course/features/my_course/data/source/purchased_courses_data.dart';
 import 'package:online_course/features/my_course/presentation/page/course_details-page.dart';
@@ -511,15 +512,14 @@ class _PurchasedCoursesPageState extends State<PurchasedCoursesPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: const CustomText(
-              text: 'Related Courses For You',
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppColors.primaryBlueDark,
-              isSemibold: true,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: SectionHeader(
+              title: 'Related Courses For You',
+              actionLabel: '',
+              onAction: () {},
             ),
           ),
+
           const SizedBox(height: 16),
           SizedBox(
             height: 200,

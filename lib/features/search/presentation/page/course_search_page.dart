@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:online_course/core/constants/app_colors.dart';
+import 'package:online_course/core/di/sl.dart';
 import 'package:online_course/core/service/connectivity/connectivity_checker.dart';
 import 'package:online_course/core/service/connectivity/no_internat_page.dart';
-import 'package:online_course/features/home/data/source/popular_data.dart';
+import 'package:online_course/features/global/presentation/section_heading.dart';
+import 'package:online_course/features/my_course/domain/entities/category_entitie.dart';
+import 'package:online_course/features/my_course/presentation/bloc/course_bloc.dart';
 import 'package:online_course/features/my_course/presentation/page/course_details-page.dart';
 
 class CourseSearchPage extends StatefulWidget {
@@ -17,30 +21,20 @@ class CourseSearchPage extends StatefulWidget {
 }
 
 class _CourseSearchPageState extends State<CourseSearchPage> {
+  late CourseBloc _courseBloc;
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
 
   String _searchQuery = '';
   int _selectedCategoryIndex = 0;
 
-  final List<String> _categories = [
-    'All',
-    'Development',
-    'Design',
-    'Business',
-    'Marketing',
-    'IT & Software',
-  ];
-
-  final List<String> _recentSearches = [
-    'Flutter complete guide',
-    'UI/UX design principles',
-    'Python for beginners',
-  ];
+  CourseFilterEntity courseFilterEntity = CourseFilterEntity();
 
   @override
   void initState() {
     super.initState();
+    _courseBloc = context.read<CourseBloc>();
+    _courseBloc.add(GetCourseListEvent(entity: courseFilterEntity));
     // Auto focus the search bar when the page opens
     Future.delayed(const Duration(milliseconds: 300), () {
       if (mounted) _searchFocusNode.requestFocus();
@@ -54,15 +48,7 @@ class _CourseSearchPageState extends State<CourseSearchPage> {
     super.dispose();
   }
 
-  List<PopularData> get _searchResults {
-    if (_searchQuery.isEmpty) return [];
-    final lowerQuery = _searchQuery.toLowerCase();
-
-    // Using populars from home feature as mock data for search results
-    return populars.where((course) {
-      return course.label.toLowerCase().contains(lowerQuery);
-    }).toList();
-  }
+  
 
   @override
   Widget build(BuildContext context) {
@@ -99,11 +85,8 @@ class _CourseSearchPageState extends State<CourseSearchPage> {
           body: Column(
             children: [
               _buildHeader(isDark),
-              Expanded(
-                child: _searchQuery.isEmpty
-                    ? _buildDefaultState(isDark)
-                    : _buildSearchResults(isDark),
-              ),
+              _buildDefaultState(isDark),
+              Expanded(child: courseTileWidget(isDark)),
             ],
           ),
         );
@@ -115,8 +98,6 @@ class _CourseSearchPageState extends State<CourseSearchPage> {
   //  HEADER & SEARCH BAR
   // ═══════════════════════════════════════════════════════════════════════════
   Widget _buildHeader(bool isDark) {
-    final surface = isDark ? AppColors.darkSurface : Colors.white;
-
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
       decoration: BoxDecoration(
@@ -180,7 +161,15 @@ class _CourseSearchPageState extends State<CourseSearchPage> {
                   child: TextField(
                     controller: _searchController,
                     focusNode: _searchFocusNode,
-                    onChanged: (val) => setState(() => _searchQuery = val),
+                    onChanged: (val) {
+                      _courseBloc.add(
+                        GetCourseListEvent(
+                          entity: CourseFilterEntity(
+                            keyword: _searchController.text,
+                          ),
+                        ),
+                      );
+                    },
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
@@ -229,385 +218,294 @@ class _CourseSearchPageState extends State<CourseSearchPage> {
   //  DEFAULT STATE (Before Searching)
   // ═══════════════════════════════════════════════════════════════════════════
   Widget _buildDefaultState(bool isDark) {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _sectionTitle('Categories', isDark),
-          const SizedBox(height: 16),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            clipBehavior: Clip.none,
-            child: Row(
-              children: _categories.asMap().entries.map((entry) {
-                final idx = entry.key;
-                final cat = entry.value;
-                final isSelected = _selectedCategoryIndex == idx;
+    return BlocProvider(
+      create: (context) => sl<CourseBloc>()..add(GetCourseCategoryEvent()),
+      child: BlocBuilder<CourseBloc, CourseState>(
+        builder: (context, state) {
+          switch (state.runtimeType) {
+            case CourseLoadingState1:
+              return const Center(child: CircularProgressIndicator());
+            case CourseCategoryLoadedSuccessState:
+              final data = (state as CourseCategoryLoadedSuccessState).model;
 
-                return GestureDetector(
-                  onTap: () => setState(() => _selectedCategoryIndex = idx),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.only(right: 12),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
+              if (data.status != 1) {
+                return Center(child: Text(data.message.toString()));
+              }
+
+              final _categories = data.categoryList;
+
+              return SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SectionHeader(
+                      title: 'Explore Categories',
+                      actionLabel: '',
+                      onAction: () {},
                     ),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? AppColors.primaryBlue
-                          : (isDark ? AppColors.darkSurface : Colors.white),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: isSelected
-                          ? [
-                              BoxShadow(
-                                color: AppColors.primaryBlue.withValues(
-                                  alpha: 0.35,
+                    const SizedBox(height: 16),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      clipBehavior: Clip.none,
+                      child: Row(
+                        children: _categories!.asMap().entries.map((entry) {
+                          final idx = entry.key;
+
+                          final isSelected = _selectedCategoryIndex == idx;
+
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _selectedCategoryIndex = idx;
+                              });
+
+                              _courseBloc.add(
+                                GetCourseListEvent(
+                                  entity: CourseFilterEntity(
+                                    categoryKey:
+                                        data.categoryList![idx].categoryKey,
+                                  ),
                                 ),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
+                              );
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              margin: const EdgeInsets.only(right: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 12,
                               ),
-                            ]
-                          : [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.04),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? AppColors.primaryBlue
+                                    : (isDark
+                                          ? AppColors.darkSurface
+                                          : Colors.white),
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: isSelected
+                                    ? [
+                                        BoxShadow(
+                                          color: AppColors.primaryBlue
+                                              .withValues(alpha: 0.35),
+                                          blurRadius: 12,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ]
+                                    : [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(
+                                            alpha: 0.04,
+                                          ),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                border: Border.all(
+                                  color: isSelected
+                                      ? Colors.transparent
+                                      : (isDark
+                                            ? Colors.white.withValues(
+                                                alpha: 0.05,
+                                              )
+                                            : Colors.grey.withValues(
+                                                alpha: 0.15,
+                                              )),
+                                ),
                               ),
-                            ],
-                      border: Border.all(
-                        color: isSelected
-                            ? Colors.transparent
-                            : (isDark
-                                  ? Colors.white.withValues(alpha: 0.05)
-                                  : Colors.grey.withValues(alpha: 0.15)),
+                              child: Text(
+                                _categories[idx].categoryName ?? '',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : (isDark
+                                            ? AppColors.darkTextSecondary
+                                            : AppColors.darkGray),
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
                       ),
                     ),
-                    child: Text(
-                      cat,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: isSelected
-                            ? Colors.white
-                            : (isDark
-                                  ? AppColors.darkTextSecondary
-                                  : AppColors.darkGray),
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
 
-          const SizedBox(height: 32),
-          _sectionTitle('Recent Searches', isDark),
-          const SizedBox(height: 16),
-          ..._recentSearches.map((search) => _recentSearchTile(search, isDark)),
+                    // const SizedBox(height: 32),
+                    // _sectionTitle('Recent Searches', isDark),
+                    // const SizedBox(height: 16),
 
-          const SizedBox(height: 32),
-          _sectionTitle('Popular Courses', isDark),
-          const SizedBox(height: 16),
-          ...populars.map((course) => _buildCourseCard(course, isDark)),
-        ],
+                    // ..._recentSearches.map(
+                    //   (search) => _recentSearchTile(search, isDark),
+                    // ),
+                  ],
+                ),
+              );
+            case CourseCategoryFailedErrorState:
+              return Center(child: Text('Opps! Something went wrong.'));
+            default:
+              return const Center(child: Text('Opps! Unknown state found.'));
+          }
+        },
       ),
     );
   }
 
-  Widget _recentSearchTile(String text, bool isDark) {
-    return GestureDetector(
-      onTap: () {
-        _searchController.text = text;
-        setState(() => _searchQuery = text);
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.darkSurface : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.05)
-                : Colors.grey.withValues(alpha: 0.1),
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.history_rounded, color: AppColors.mediumGray, size: 20),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Text(
-                text,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: isDark
-                      ? AppColors.darkTextPrimary
-                      : AppColors.darkGray,
-                ),
-              ),
-            ),
-            Icon(
-              Icons.north_west_rounded,
-              color: AppColors.mediumGray,
-              size: 18,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  SEARCH RESULTS
-  // ═══════════════════════════════════════════════════════════════════════════
-  Widget _buildSearchResults(bool isDark) {
-    final results = _searchResults;
-
-    if (results.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: AppColors.accentOrange.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.search_off_rounded,
-                size: 64,
-                color: AppColors.accentOrange,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'No results found',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: isDark ? AppColors.darkTextPrimary : AppColors.darkGray,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'We couldn\'t find anything for "$_searchQuery".\nTry searching for something else.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.mediumGray,
-                height: 1.5,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                'Found ',
-                style: TextStyle(
-                  fontSize: 15,
-                  color: isDark
-                      ? AppColors.darkTextSecondary
-                      : AppColors.mediumGray,
-                ),
-              ),
-              Text(
-                '${results.length} results',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: isDark
-                      ? AppColors.darkTextPrimary
-                      : AppColors.darkGray,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          ...results.map((course) => _buildCourseCard(course, isDark)),
-        ],
-      ),
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  SHARED COMPONENTS
-  // ═══════════════════════════════════════════════════════════════════════════
-  Widget _sectionTitle(String title, bool isDark) {
-    return Text(
-      title,
-      style: TextStyle(
-        fontSize: 18,
-        fontWeight: FontWeight.w800,
-        color: isDark ? AppColors.darkTextPrimary : AppColors.darkGray,
-        letterSpacing: -0.3,
-      ),
-    );
-  }
-
-  Widget _buildCourseCard(PopularData course, bool isDark) {
-    return GestureDetector(
-      onTap: () => context.pushNamed(CourseDetailsPage.routeName),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.darkSurface : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            // Thumbnail
-            Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                image: DecorationImage(
-                  image: AssetImage(course.imageUrl),
-                  fit: BoxFit.cover,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 5,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Stack(
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withValues(alpha: 0.4),
-                        ],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 8,
-                    left: 8,
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.star_rounded,
-                          color: AppColors.accentOrange,
-                          size: 14,
-                        ),
-                        const SizedBox(width: 4),
-                        const Text(
-                          '4.8',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 16),
-
-            // Info
-            Expanded(
+  Widget courseTileWidget(bool isDark) {
+    return BlocBuilder(
+      bloc: _courseBloc,
+      builder: (context, state) {
+        switch (state.runtimeType) {
+          case CourseLoadingState:
+            return Center(child: CircularProgressIndicator());
+          case CourseListLoadedSuccessState:
+            final data = (state as CourseListLoadedSuccessState).model;
+            if (data.status != 1) {
+              return Center(child: Text(data.message.toString()));
+            }
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryBlue.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      'Development',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primaryBlue,
-                        letterSpacing: 0.5,
-                      ),
+                  const SizedBox(height: 32),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: SectionHeader(
+                      title: 'Courses',
+                      actionLabel: '',
+                      onAction: () {},
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    course.label,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: isDark
-                          ? AppColors.darkTextPrimary
-                          : AppColors.darkGray,
-                      height: 1.2,
+                  // const SizedBox(height: 16),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: data.courseList?.length,
+                      itemBuilder: (context, index) {
+                        return GestureDetector(
+                          onTap: () =>
+                              context.pushNamed(CourseDetailsPage.routeName),
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 16),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? AppColors.darkSurface
+                                  : Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.05),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                // Thumbnail
+                                Container(
+                                  width: 100,
+                                  height: 100,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(14),
+                                    image: DecorationImage(
+                                      image: NetworkImage(
+                                        data.courseList![index].courseIcon
+                                            .toString(),
+                                      ),
+                                      fit: BoxFit.cover,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                        blurRadius: 5,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Stack(
+                                    children: [
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
+                                          gradient: LinearGradient(
+                                            colors: [
+                                              Colors.transparent,
+                                              Colors.black.withValues(
+                                                alpha: 0.4,
+                                              ),
+                                            ],
+                                            begin: Alignment.topCenter,
+                                            end: Alignment.bottomCenter,
+                                          ),
+                                        ),
+                                      ),
+                                      Positioned(
+                                        bottom: 8,
+                                        left: 8,
+                                        child: Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.star_rounded,
+                                              color: AppColors.accentOrange,
+                                              size: 14,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            const Text(
+                                              '4.8',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+
+                                Text(
+                                  data.courseList![index].courseName.toString(),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800,
+                                    color: isDark
+                                        ? AppColors.darkTextPrimary
+                                        : AppColors.darkGray,
+                                    height: 1.2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        '₹${course.fees}',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.accentOrange,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        '₹${(course.fees * 1.5).toInt()}', // Fake original price
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.mediumGray,
-                          decoration: TextDecoration.lineThrough,
-                        ),
-                      ),
-                    ],
-                  ),
+                  SizedBox(height: 20),
                 ],
               ),
-            ),
-          ],
-        ),
-      ),
+            );
+          case CourseListFailedErrorState:
+            return const Center(child: Text("Opps! Something went wrong."));
+          default:
+            return const Center(child: Text("Opps! Unknown state found"));
+        }
+      },
     );
   }
+
+ 
 }

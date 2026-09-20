@@ -12,6 +12,7 @@ class ToastUtils {
     Color? textColor, {
     required String message,
     IconData? icon,
+    int? maxLines,
   }) {
     final String cleanMessage = message.trim();
     if (cleanMessage.isEmpty || cleanMessage == 'null') return;
@@ -62,6 +63,7 @@ class ToastUtils {
           bgColor: bgColor,
           fgColor: fgColor,
           icon: icon ?? defaultIcon,
+          maxLines: maxLines,
           onDismiss: () {
             if (_currentEntry == entry) {
               _currentEntry = null;
@@ -87,6 +89,7 @@ class _TopToastWidget extends StatefulWidget {
   final Color fgColor;
   final IconData icon;
   final VoidCallback onDismiss;
+  final int? maxLines;
 
   const _TopToastWidget({
     required this.message,
@@ -94,6 +97,7 @@ class _TopToastWidget extends StatefulWidget {
     required this.fgColor,
     required this.icon,
     required this.onDismiss,
+    this.maxLines,
   });
 
   @override
@@ -136,7 +140,7 @@ class _TopToastWidgetState extends State<_TopToastWidget>
     _controller.forward();
 
     // Auto dismiss after 3 seconds
-    Future.delayed(const Duration(milliseconds: 5000), () {
+    Future.delayed(const Duration(seconds: 10), () {
       _dismiss();
     });
   }
@@ -206,6 +210,7 @@ class _TopToastWidgetState extends State<_TopToastWidget>
                     Expanded(
                       child: Text(
                         widget.message,
+                        maxLines: widget.maxLines,
                         style: TextStyle(
                           color: widget.fgColor,
                           fontSize: 14,

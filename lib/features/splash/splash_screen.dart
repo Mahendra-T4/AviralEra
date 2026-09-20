@@ -30,10 +30,10 @@ class _SplashScreenState extends State<SplashScreen>
 
   void userNavigationControl() async {
     if (UserDB.token) {
-      await Future.delayed(const Duration(seconds: 1));
+      await Future.delayed(const Duration(seconds: 3));
       context.goNamed(HomePage.routeName);
     } else {
-      await Future.delayed(const Duration(seconds: 1));
+      await Future.delayed(const Duration(seconds: 3));
       context.goNamed(LoginPanel.routeName);
     }
   }

@@ -13,7 +13,7 @@ import 'package:online_course/features/auth/domain/entities/register_user_entiti
 import 'package:online_course/features/auth/domain/repositories/auth_repositories.dart';
 import 'package:online_course/features/global/data/model/success_model.dart';
 
-class AuthRepositoriesImpl extends AuthRepositories {
+class AuthRepositoriesImpl implements AuthRepositories {
   @override
   Future<LoginModel> login({
     required String mobileNumber,

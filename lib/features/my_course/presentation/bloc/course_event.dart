@@ -8,9 +8,10 @@ sealed class CourseEvent extends Equatable {
 }
 
 final class GetCourseListEvent extends CourseEvent {
-  const GetCourseListEvent();
+  final CourseFilterEntity entity;
+  const GetCourseListEvent({required this.entity});
   @override
-  List<Object> get props => [];
+  List<Object> get props => [entity];
 }
 
 final class GetCourseTypeEvent extends CourseEvent {
@@ -18,3 +19,10 @@ final class GetCourseTypeEvent extends CourseEvent {
   @override
   List<Object> get props => [];
 }
+
+final class GetCourseCategoryEvent extends CourseEvent {
+  const GetCourseCategoryEvent();
+  @override
+  List<Object> get props => [];
+}
+  

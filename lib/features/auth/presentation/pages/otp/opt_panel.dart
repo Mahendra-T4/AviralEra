@@ -166,24 +166,24 @@ class _OTPPanelState extends State<OTPPanel> with TickerProviderStateMixin {
       return;
     }
 
-    String otp = getFullOTP();
+    // String otp = getFullOTP();
 
-    if (otp.length != 6 || otp == "") {
-      ToastUtils.showToast(
-        context,
-        ToastType.warning,
-        Colors.white,
-        message: 'Please enter all 6 digits',
-        icon: Icons.check,
-      );
-      return;
-    }
+    // if (otp.length != 6 || otp == "") {
+    //   ToastUtils.showToast(
+    //     context,
+    //     ToastType.warning,
+    //     Colors.white,
+    //     message: 'Please enter all 6 digits',
+    //     icon: Icons.check,
+    //   );
+    //   return;
+    // }
 
     _authBloc.add(
       OTPVerifyEvent(
         uMobile: widget.data?.mobileNumber ?? '',
         uOTP: getFullOTP(),
-        vType: widget.data?.panelID != 1 ? '' : '1',
+        vType: widget.data?.panelID != 1 ? '1' : '0',
       ),
     );
   }
@@ -640,7 +640,7 @@ class _OTPPanelState extends State<OTPPanel> with TickerProviderStateMixin {
           );
           Future.delayed(const Duration(milliseconds: 600), () {
             if (!mounted) return;
-            if (widget.data?.panelID == 1 ) {
+            if (widget.data?.panelID == 1) {
               GoRouter.of(context).goNamed(LoginPanel.routeName);
               if (UserDB.token) {
                 UserDB.logout(context);

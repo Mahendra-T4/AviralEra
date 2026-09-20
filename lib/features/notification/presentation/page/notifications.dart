@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:online_course/core/constants/app_colors.dart';
+import 'package:online_course/core/di/sl.dart';
 import 'package:online_course/core/service/connectivity/connectivity_checker.dart';
 import 'package:online_course/core/service/connectivity/no_internat_page.dart';
 import 'package:online_course/core/utils/custom_appbar.dart';
+import 'package:online_course/features/notification/presentation/bloc/notification_bloc.dart';
 
 class NotificationsPage extends StatefulWidget {
   const NotificationsPage({super.key});
@@ -16,10 +19,13 @@ class _NotificationsPageState extends State<NotificationsPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
+  late NotificationBloc notificationBloc;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    notificationBloc = sl<NotificationBloc>()..add(GetNotificationEvent());
   }
 
   @override
@@ -56,8 +62,27 @@ class _NotificationsPageState extends State<NotificationsPage>
             title: 'Notifications',
             showNotificationIcon: false,
           ),
-          body: ListView.builder(
-            itemCount: 10,
+          body: _buildContentBody(isDark: isDark),
+        );
+      },
+    );
+  }
+
+  Widget _buildContentBody({required bool isDark}) => BlocBuilder(
+    bloc: notificationBloc,
+    builder: (context, state) {
+      switch (state.runtimeType) {
+        case NotificationLoadingState:
+          return Center(child: CircularProgressIndicator());
+        case NotificationLoadedSuccessState:
+          final notifications = (state as NotificationLoadedSuccessState).model;
+
+          if (notifications.status != 1) {
+            return Center(child: Text(notifications.message.toString()));
+          }
+
+          return ListView.builder(
+            itemCount: notifications.notification?.length,
 
             padding: const EdgeInsets.only(top: 10, bottom: 10),
             itemBuilder: (context, index) {
@@ -127,14 +152,36 @@ class _NotificationsPageState extends State<NotificationsPage>
                           ),
                           const SizedBox(width: 16),
                           Expanded(
-                            child: Text(
-                              'Notification Title',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.getTextColor(context),
-                                height: 1.35,
-                              ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  notifications
+                                      .notification![index]
+                                      .notificationSubject
+                                      .toString(),
+
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.getTextColor(context),
+                                    height: 1.35,
+                                  ),
+                                ),
+                                Text(
+                                  notifications
+                                      .notification![index]
+                                      .notificationDate
+                                      .toString(),
+
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.getTextColor(context),
+                                    height: 1.35,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
@@ -144,9 +191,12 @@ class _NotificationsPageState extends State<NotificationsPage>
                 ),
               );
             },
-          ),
-        );
-      },
-    );
-  }
+          );
+        case NotificationErrorFailState:
+          return Center(child: Text('Opps? Something went wrong.'));
+        default:
+          return const Center(child: Text('State not found'));
+      }
+    },
+  );
 }
